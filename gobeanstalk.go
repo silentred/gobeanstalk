@@ -333,6 +333,57 @@ func (c *Conn) Touch(id uint64) error {
 }
 
 /*
+Ping Pong heartbeat test
+*/
+func (c *Conn) Ping() error {
+	cmd := "ping \r\n"
+	expected := "UNKNOWN_COMMAND\r\n"
+	return sendExpectExact(c, cmd, expected)
+}
+
+func (c *Conn) Watching() ([]string, error) {
+	cmd := "list-tubes-watched\r\n"
+	resp, err := sendGetResp(c, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	//parse response
+	var bodyLen int
+
+	switch {
+	case strings.Index(resp, "OK") == 0:
+		_, err = fmt.Sscanf(resp, "OK %d\r\n", &bodyLen)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, parseCommonError(resp)
+	}
+
+	//read job body
+	body := make([]byte, bodyLen+2) //+2 is for trailing \r\n
+	n, err := io.ReadFull(c.bufReader, body)
+	if err != nil {
+		log.Println("failed reading body:", err.Error())
+		return nil, err
+	}
+
+	body = body[:n-2] //strip \r\n trail
+
+	list := strings.Split(string(body), "\n")
+	list = list[1:]
+	var result []string = make([]string, 1)
+	for _, val := range list {
+		if val != "" {
+			result = append(result, strings.Trim(val, "- \n\r"))
+		}
+	}
+
+	return result, nil
+}
+
+/*
 Quit close network connection.
 */
 func (c *Conn) Quit() {

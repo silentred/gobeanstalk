@@ -74,6 +74,8 @@ Worker commands:
 * touch
 * release
 * bury
+* `ping`
+* `watching`(list-tubes-watched)
 
 Other commands:
 
